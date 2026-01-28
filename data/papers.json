@@ -1,0 +1,116 @@
+[
+  {
+    "id": "paper_001",
+    "title": "Deep Learning for Image Recognition",
+    "abstract": "This paper explores convolutional neural networks for image classification tasks.",
+    "year": 2021,
+    "concepts": [
+      "computer vision",
+      "deep learning",
+      "convolutional neural networks",
+      "image classification"
+    ]
+  },
+  {
+    "id": "paper_002",
+    "title": "Transformer Models in Natural Language Processing",
+    "abstract": "We discuss the application of transformer architectures in natural language processing tasks such as translation and summarization.",
+    "year": 2022,
+    "concepts": [
+      "natural language processing",
+      "transformers",
+      "language models",
+      "text representation"
+    ]
+  },
+  {
+    "id": "paper_003",
+    "title": "Graph Neural Networks: A Survey",
+    "abstract": "A comprehensive review of graph neural networks and their applications in structured data.",
+    "year": 2020,
+    "concepts": [
+      "graph neural networks",
+      "graph learning",
+      "deep learning"
+    ]
+  },
+  {
+    "id": "paper_004",
+    "title": "Sentiment Analysis Using Deep Learning",
+    "abstract": "This work studies sentiment analysis techniques using recurrent and convolutional neural networks.",
+    "year": 2019,
+    "concepts": [
+      "sentiment analysis",
+      "natural language processing",
+      "deep learning"
+    ]
+  },
+  {
+    "id": "paper_005",
+    "title": "Financial Text Analysis with Machine Learning",
+    "abstract": "We analyze financial news articles using machine learning methods for market prediction.",
+    "year": 2018,
+    "concepts": [
+      "finance",
+      "text mining",
+      "machine learning",
+      "financial forecasting"
+    ]
+  },
+  {
+    "id": "paper_006",
+    "title": "Transformer-Based Models for Text Classification",
+    "abstract": "Transformer-based architectures are evaluated for multiple text classification benchmarks.",
+    "year": 2023,
+    "concepts": [
+      "transformers",
+      "text classification",
+      "natural language processing"
+    ]
+  },
+  {
+    "id": "paper_007",
+    "title": "Multimodal Learning with Vision and Language",
+    "abstract": "We propose models that jointly learn from visual and textual data.",
+    "year": 2021,
+    "concepts": [
+      "multimodal learning",
+      "computer vision",
+      "natural language processing"
+    ]
+  },
+  {
+    "id": "paper_008",
+    "title": "Machine Learning in Quantitative Finance",
+    "abstract": "An overview of machine learning techniques applied to quantitative finance problems.",
+    "year": 2019,
+    "concepts": [
+      "finance",
+      "machine learning",
+      "quantitative finance"
+    ]
+  },
+  {
+    "id": "paper_009",
+    "title": "Graph-Based Fraud Detection",
+    "abstract": "Graph-based machine learning methods are used to detect fraudulent financial transactions.",
+    "year": 2022,
+    "concepts": [
+      "graph learning",
+      "fraud detection",
+      "finance",
+      "machine learning"
+    ]
+  },
+  {
+    "id": "paper_010",
+    "title": "Recent Trends in Large Language Models",
+    "abstract": "This paper reviews recent advances in large language models and their capabilities.",
+    "year": 2023,
+    "concepts": [
+      "large language models",
+      "transformers",
+      "natural language processing"
+    ]
+  }
+]

@@ -1,32 +1,29 @@
-# scripts/build_index.py
+#!/usr/bin/env python
+"""
+Build the FAISS vector index from data/papers.json.
 
-from app.corpus.loader import load_papers
-from app.corpus.embedder import Embedder
-from app.corpus.index import VectorIndex
-from app.config import settings
+Usage:
+    python scripts/build_index.py
+
+The index is saved to data/index.faiss (configurable via FAISS_INDEX_PATH).
+Run this script whenever papers.json is updated.
+"""
+
+import sys
+import os
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from app.corpus.builder import build_index
 
 
 def main():
-    print("📚 Loading papers...")
-    papers = load_papers()
-
-    print(f"✅ Loaded {len(papers)} papers")
-
-    abstracts = [p["abstract"] for p in papers]
-
-    print("🧠 Generating embeddings...")
-    embedder = Embedder()
-    vectors = embedder.embed_batch(abstracts)
-
-    print("📐 Building FAISS index...")
-    index = VectorIndex(dim=vectors.shape[1])
-    index.add(vectors)
-
-    print("💾 Saving index...")
-    index.save(settings.FAISS_INDEX_PATH)
-
-    print("🎉 Index build complete")
-    print(f"Saved to: {settings.FAISS_INDEX_PATH}")
+    try:
+        index, papers = build_index()
+        print(f"Done. Indexed {len(papers)} papers.")
+    except ValueError as e:
+        print(f"Error: {e}")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

@@ -104,6 +104,12 @@ ENV/
 env.bak/
 venv.bak/
 
+# Generated data (large binary files)
+data/*.faiss
+
+# Keep papers.json tracked (corpus source of truth)
+!data/papers.json
+
 # Spyder project settings
 .spyderproject
 .spyproject

@@ -5,7 +5,7 @@ uvicorn==0.29.0
 # ---- Environment variables ----
 python-dotenv==1.0.1
 
-# ---- OpenAI (idea-level semantic extraction) ----
+# ---- OpenAI (idea-level semantic extraction + optional LLM explanation) ----
 openai==1.12.0
 
 # ---- Embeddings ----
@@ -18,4 +18,16 @@ faiss-cpu==1.8.0
 # ---- Data handling ----
 numpy==1.26.4
 pydantic==2.6.4
-httpx==0.27.0
+
+# ---- HTTP (arXiv corpus fetcher) ----
+requests>=2.31.0
+
+# ---- File upload support ----
+python-multipart>=0.0.9
+
+# ---- Keyword/concept extraction (used for corpus concept tagging) ----
+keybert>=0.8.0
+
+# ---- Numerical / ML utilities ----
+scipy>=1.13.0
+scikit-learn>=1.4.0

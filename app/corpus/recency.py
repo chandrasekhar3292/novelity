@@ -1,4 +1,4 @@
-# app/core/recency.py
+# app/corpus/recency.py
 
 from typing import Dict, List
 from collections import Counter

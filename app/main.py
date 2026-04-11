@@ -19,7 +19,9 @@ async def lifespan(app: FastAPI):
     # Load embedding model once (shared across all requests)
     from app.corpus.embedder import Embedder
     from app.corpus.builder import load_index
+    from app.corpus.loader import load_papers
     from app.core import similarity as sim_module
+    from app.core.corpus_stats import init_stats
 
     print(f"  Loading embedding model: {settings.EMBEDDING_MODEL}")
     embedder = Embedder()
@@ -27,15 +29,28 @@ async def lifespan(app: FastAPI):
     print(f"  Loading FAISS index from: {settings.FAISS_INDEX_PATH}")
     index = load_index()
 
+    papers = []
     if index is not None:
         print(f"  Index loaded — {index.index.ntotal} vectors")
+        papers = load_papers()
+        print(f"  Loaded {len(papers)} papers")
     else:
         print(
             "  No index found. "
             "Run 'python scripts/build_index.py' to build one."
         )
 
-    sim_module.init(embedder, index)
+    sim_module.init(embedder, index, papers)
+
+    # Cache corpus submission timeline for the recency signal
+    if papers:
+        from app.corpus.recency import init_corpus_range
+        init_corpus_range(papers)
+
+    # Compute corpus statistics for adaptive classifier
+    if index is not None and papers:
+        print("  Computing corpus statistics...")
+        init_stats(papers, index, embedder)
 
     yield
 

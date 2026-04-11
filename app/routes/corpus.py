@@ -160,6 +160,168 @@ def list_papers(limit: int = 50, offset: int = 0):
     }
 
 
+class ArxivFetchRequest(BaseModel):
+    query: str = Field(..., min_length=2, description="arXiv search query (e.g. 'transformer attention')")
+    max_results: int = Field(default=100, ge=1, le=500, description="Max papers to fetch")
+
+
+class OpenAlexFetchRequest(BaseModel):
+    query: Optional[str] = Field(default=None, description="Full-text search query (optional)")
+    max_results: int = Field(default=1000, ge=1, le=50000, description="Max papers to fetch")
+    from_year: Optional[int] = Field(default=None, description="Papers published from this year")
+    to_year: Optional[int] = Field(default=None, description="Papers published up to this year")
+    mailto: Optional[str] = Field(default=None, description="Email for polite pool (faster rate limits)")
+
+
+class S2FetchRequest(BaseModel):
+    query: str = Field(..., min_length=2, description="Search query (e.g. 'deep learning')")
+    max_results: int = Field(default=1000, ge=1, le=50000, description="Max papers to fetch")
+    year_range: Optional[str] = Field(default=None, description="Year filter (e.g. '2018-2024')")
+    fields_of_study: Optional[list[str]] = Field(default=None, description="S2 fields (e.g. ['Computer Science'])")
+
+
+@router.post("/corpus/fetch-arxiv")
+def fetch_from_arxiv(req: ArxivFetchRequest):
+    """
+    Fetch papers from arXiv by query, add to corpus, and rebuild index.
+    Duplicate IDs are skipped.
+    """
+    from app.corpus.fetcher import fetch_arxiv
+
+    fetched = fetch_arxiv(req.query, req.max_results)
+    if not fetched:
+        return {
+            "status": "no_results",
+            "fetched": 0,
+            "added": 0,
+            "skipped": 0,
+            "corpus_size": len(load_papers()),
+        }
+
+    existing = load_papers()
+    existing_ids = {p["id"] for p in existing}
+    new_papers = [p for p in fetched if p["id"] not in existing_ids]
+    skipped = len(fetched) - len(new_papers)
+
+    if not new_papers:
+        return {
+            "status": "no_change",
+            "fetched": len(fetched),
+            "added": 0,
+            "skipped": skipped,
+            "corpus_size": len(existing),
+        }
+
+    updated = existing + new_papers
+    _rebuild(updated)
+
+    return {
+        "status": "ok",
+        "fetched": len(fetched),
+        "added": len(new_papers),
+        "skipped": skipped,
+        "corpus_size": len(updated),
+    }
+
+
+@router.post("/corpus/fetch-openalex")
+def fetch_from_openalex(req: OpenAlexFetchRequest):
+    """
+    Fetch papers from OpenAlex (AI/ML concepts), add to corpus, and rebuild index.
+    No API key needed. Use mailto for faster rate limits.
+    """
+    from app.corpus.fetcher_openalex import fetch_openalex
+
+    existing = load_papers()
+    existing_ids = {p["id"] for p in existing}
+    new_papers = []
+    total_fetched = 0
+
+    for batch in fetch_openalex(
+        query=req.query,
+        max_results=req.max_results,
+        from_year=req.from_year,
+        to_year=req.to_year,
+        mailto=req.mailto,
+    ):
+        for paper in batch:
+            total_fetched += 1
+            if paper["id"] not in existing_ids:
+                # Strip internal dedup fields
+                paper.pop("_doi", None)
+                paper.pop("_arxiv_id", None)
+                new_papers.append(paper)
+                existing_ids.add(paper["id"])
+
+    if not new_papers:
+        return {
+            "status": "no_change",
+            "fetched": total_fetched,
+            "added": 0,
+            "skipped": total_fetched,
+            "corpus_size": len(existing),
+        }
+
+    updated = existing + new_papers
+    _rebuild(updated)
+
+    return {
+        "status": "ok",
+        "fetched": total_fetched,
+        "added": len(new_papers),
+        "skipped": total_fetched - len(new_papers),
+        "corpus_size": len(updated),
+    }
+
+
+@router.post("/corpus/fetch-s2")
+def fetch_from_s2(req: S2FetchRequest):
+    """
+    Fetch papers from Semantic Scholar, add to corpus, and rebuild index.
+    Set S2_API_KEY env var for higher rate limits.
+    """
+    from app.corpus.fetcher_s2 import fetch_s2
+
+    existing = load_papers()
+    existing_ids = {p["id"] for p in existing}
+    new_papers = []
+    total_fetched = 0
+
+    for batch in fetch_s2(
+        query=req.query,
+        max_results=req.max_results,
+        year_range=req.year_range,
+        fields_of_study=req.fields_of_study,
+    ):
+        for paper in batch:
+            total_fetched += 1
+            if paper["id"] not in existing_ids:
+                paper.pop("_doi", None)
+                paper.pop("_arxiv_id", None)
+                new_papers.append(paper)
+                existing_ids.add(paper["id"])
+
+    if not new_papers:
+        return {
+            "status": "no_change",
+            "fetched": total_fetched,
+            "added": 0,
+            "skipped": total_fetched,
+            "corpus_size": len(existing),
+        }
+
+    updated = existing + new_papers
+    _rebuild(updated)
+
+    return {
+        "status": "ok",
+        "fetched": total_fetched,
+        "added": len(new_papers),
+        "skipped": total_fetched - len(new_papers),
+        "corpus_size": len(updated),
+    }
+
+
 @router.get("/corpus/status")
 def corpus_status():
     """Current corpus and index status."""

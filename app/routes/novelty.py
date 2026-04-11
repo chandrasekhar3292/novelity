@@ -1,6 +1,9 @@
 # app/routes/novelty.py
 
+import re
 import traceback
+from typing import Optional
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
@@ -10,11 +13,45 @@ from app.core.density import compute_density
 from app.core.crosslink import compute_crosslink_score
 from app.core.features import build_feature_vector
 from app.core.classifier import classify_novelty
-from app.core.explanation import generate_rule_based_explanation
+from app.core.explanation import generate_narrative_explanation
 from app.corpus.loader import load_papers
 from app.corpus.recency import compute_recency
 
 router = APIRouter()
+
+
+_WORD_RE = re.compile(r"[a-zA-Z0-9]+")
+
+
+def _normalize_words(text: str) -> set:
+    return set(w.lower() for w in _WORD_RE.findall(text or "") if len(w) >= 3)
+
+
+def _detect_duplicate(idea_text: str, top_paper: Optional[dict]) -> bool:
+    """
+    True when the idea is essentially the same as the top match.
+
+    Heuristic: strip a leading "Name:" prefix from the title (handles paper
+    naming conventions like "VOID: Video Object..."), then check whether
+    >=80% of the title's content words appear in the idea text. This catches
+    users pasting a paper title or near-verbatim abstract into the analyzer.
+    """
+    if not top_paper:
+        return False
+    title = (top_paper.get("title") or "").strip()
+    if len(title) < 10:
+        return False
+
+    # Strip leading "ACRONYM: " or "Name: " prefix
+    title_clean = re.sub(r"^[A-Za-z0-9\-]+:\s*", "", title)
+
+    title_words = _normalize_words(title_clean)
+    if len(title_words) < 3:
+        return False
+
+    text_words = _normalize_words(idea_text)
+    overlap = len(title_words & text_words) / len(title_words)
+    return overlap >= 0.8
 
 _sim_engine = SimilarityEngine()
 
@@ -32,21 +69,43 @@ def _run_pipeline(idea_text: str, use_llm: bool = True) -> dict:
         tags = _fallback_extraction(idea_text)
         idea_info = {"idea_text": idea_text, **tags}
 
-    similarity = _sim_engine.analyze(idea_text)
+    # Pass extracted concepts for category-aware similarity
+    idea_concepts = idea_info.get("concepts", []) + idea_info.get("domains", [])
+    similarity = _sim_engine.analyze(idea_text, idea_concepts=idea_concepts)
 
     corpus = load_papers()
     similar_papers = [
-        corpus[i] for i in similarity["top_indices"]
+        {**corpus[i], "similarity": float(score)}
+        for i, score in zip(similarity["top_indices"], similarity["scores"])
         if 0 <= i < len(corpus)
     ]
 
     density = compute_density(similar_papers)
     recency = compute_recency(similar_papers)
-    crosslink = compute_crosslink_score(idea_info["concepts"], corpus)
+    crosslink = compute_crosslink_score(
+        idea_info["concepts"], corpus, similar_papers=similar_papers,
+    )
     features = build_feature_vector(similarity, density, recency, crosslink)
     classification = classify_novelty(features)
-    explanation = generate_rule_based_explanation(
-        idea_info["domains"], features, classification
+
+    # Duplicate override: if the user pasted a paper title verbatim, the
+    # classifier will land on Direct Gap Fill but the verdict should be
+    # the harder "not novel" — there is no gap to investigate, the work
+    # already exists.
+    top = similar_papers[0] if similar_papers else None
+    if _detect_duplicate(idea_text, top):
+        classification["verdict"] = "not_novel"
+        classification["verdict_text"] = (
+            f"Not novel — closely matches \u2018{top.get('title', '')}\u2019"
+        )
+        classification["is_duplicate"] = True
+
+    explanation = generate_narrative_explanation(
+        idea_text=idea_text,
+        top_paper=top,
+        features=features,
+        classification=classification,
+        idea_concepts=idea_info.get("concepts"),
     )
 
     return {
